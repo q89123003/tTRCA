@@ -1,13 +1,13 @@
 clear, close all;
 
 fs = 250;
-nFBs = 1;
+nFBs = 5;
 isEnsemble = true;
 channels = [53 : 59 61 : 63];
 delay = round(0.65 * fs);
-length = 1 * fs;
+length = 0.5 * fs;
 
-subjects = 1 : 34;
+subjects = 1 : 35;
 subject_eeg = cell(1, size(subjects, 2));
 
 for subject = subjects
@@ -19,17 +19,19 @@ for subject = subjects
 end
 
 %%
-ONE_SUPPLEMENT = true;
+ONE_SUPPLEMENT = false;
 
-target_subjects = 1 : 20;
-existing_subjects = 21 : 30;
+target_subjects = 21 : 35;
+existing_subjects = 1 : 20;
 
-template_sizes = [2 3 4 5];
+template_sizes = [2 4];
+max_template_size = max(template_sizes);
 
-subject_accs = zeros(4, 10, size(template_sizes, 2));
-subject_models = cell(4, 10, size(template_sizes, 2));
+subject_accs = zeros(4, size(target_subjects, 2), size(template_sizes, 2));
+subject_models = cell(4, size(target_subjects, 2), size(template_sizes, 2));
 
-for subject = target_subjects
+for i_subject = 1 : size(target_subjects, 2)
+    subject = target_subjects(i_subject);
         
     if ONE_SUPPLEMENT == true
         sup_eeg = cell(1, 1);
@@ -51,38 +53,36 @@ for subject = target_subjects
     end
     
     eeg = subject_eeg{subject};
-    nTrials = size(eeg, 4);
     valTrue = 1 : size(eeg, 1);
     
+    test = eeg(:, :, :, max_template_size + 1 : end); 
     for i_ts = 1 : size(template_sizes, 2)
         template_size = template_sizes(i_ts);
+        template = eeg(:, :, :, 1 : template_size);
 
-        for loocv_i = 1:1:nTrials
+        % Baseline
+        baseline_model = train_trca(template, fs, nFBs);
+
+        % woLST
+        woLST_train = cat(4, template, sup_eeg_cat);
+        woLST_model = train_trca(woLST_train, fs, nFBs);
+        %woLST_model = train_wottrca(template, sup_eeg_cat, fs, nFBs);
+
+        % LST
+        LST_model = train_trca_LST(template, sup_eeg_cat, fs, nFBs);
+
+        % tTRCA
+        tTrca_model = train_ttrca(template, sup_eeg, fs, nFBs);
+            
+        for loocv_i = 1:size(test, 4)
             % Get single trial testing data.
-            testdata = squeeze(eeg(:, :, :, loocv_i));       
-
-            % Baseline
-            template = eeg;
-            template(:, :, :, loocv_i) = [];
-            template = template(:, :, :, 1 : template_size);
-            baseline_model = train_trca(template, fs, nFBs);
-
-            % woLST
-            %woLST_train = cat(4, template, sup_eeg_cat);
-            %woLST_model = train_trca(woLST_train, fs, nFBs);
-            woLST_model = train_wottrca(template, sup_eeg_cat, fs, nFBs);
-
-            % LST
-            LST_model = train_trca_LST(template, sup_eeg_cat, fs, nFBs);
-
-            % tTRCA
-            tTrca_model = train_ttrca(template, sup_eeg, fs, nFBs);
+            test_trial = squeeze(test(:, :, :, loocv_i));
 
             % Test phase ---------------------------------------
-            baseline_estimated = test_trca(testdata, baseline_model, isEnsemble);
-            woLST_estimated = test_trca(testdata, woLST_model, isEnsemble);
-            LST_estimated = test_trca(testdata, LST_model, isEnsemble);
-            tTrca_estimated = test_ttrca(testdata, tTrca_model, isEnsemble);
+            baseline_estimated = test_trca(test_trial, baseline_model, isEnsemble);
+            woLST_estimated = test_trca(test_trial, woLST_model, isEnsemble);
+            LST_estimated = test_trca(test_trial, LST_model, isEnsemble);
+            tTrca_estimated = test_ttrca(test_trial, tTrca_model, isEnsemble);
 
             % Evaluation ----------------------------------------
 
@@ -110,15 +110,15 @@ for subject = target_subjects
         fprintf('tTRCA: Averaged accuracy = %2.2f%c%2.2f%%\n\n', ...
                 mean(tTrca_accs)*100, char(177), std(tTrca_accs)*100);
 
-        subject_accs(1, subject, i_ts) = mean(baseline_accs);
-        subject_accs(2, subject, i_ts) = mean(woLST_accs);
-        subject_accs(3, subject, i_ts) = mean(LST_accs);
-        subject_accs(4, subject, i_ts) = mean(tTrca_accs);
+        subject_accs(1, i_subject, i_ts) = mean(baseline_accs);
+        subject_accs(2, i_subject, i_ts) = mean(woLST_accs);
+        subject_accs(3, i_subject, i_ts) = mean(LST_accs);
+        subject_accs(4, i_subject, i_ts) = mean(tTrca_accs);
 
-        subject_models{1, subject, i_ts} = baseline_model;
-        subject_models{2, subject, i_ts} = woLST_model;
-        subject_models{3, subject, i_ts} = LST_model;
-        subject_models{4, subject, i_ts} = tTrca_model;
+        subject_models{1, i_subject, i_ts} = baseline_model;
+        subject_models{2, i_subject, i_ts} = woLST_model;
+        subject_models{3, i_subject, i_ts} = LST_model;
+        subject_models{4, i_subject, i_ts} = tTrca_model;
     end
 end
 
@@ -217,7 +217,7 @@ for i_p = 1 : 3
 end
 
 %%
-select_subject = 20;
+select_subject = 1;
 figure();
 
 for i_p = 1 : 2
@@ -268,7 +268,7 @@ end
 
 %%
 
-results = zeros(size(subject_accs, 3), 20, 4);
+results = zeros(size(subject_accs, 3), size(target_subjects, 2), 4);
 for i_m = 1 : 4
     results(:, :, i_m) = squeeze(subject_accs(i_m, :, :)).';
 end

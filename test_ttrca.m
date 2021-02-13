@@ -37,36 +37,43 @@ if ~exist('model', 'var')
 end
 
 fb_coefs = [1:model.num_fbs].^(-1.25)+0.25;
+supplement_num = size(model.V_cell, 2);
 
 for targ_i = 1:1:model.num_targs
     testdata = squeeze(eeg(targ_i, :, :));
     for fb_i = 1:1:model.num_fbs
         testdata_tmp = filterbank(testdata, model.fs, fb_i);
         for class_i = 1:1:model.num_targs
-            traindata =  squeeze(model.trains(class_i, fb_i, :, :));
-            template = squeeze(model.template(class_i, fb_i, :, :, :));
-            %supplement = squeeze(model.supplement(class_i, fb_i, :, :, :));
-            
+                        
             if ~is_ensemble
                 w = squeeze(model.W(fb_i, class_i, :));
-                %v = squeeze(model.V(fb_i, class_i, :));
             else
                 w = squeeze(model.W(fb_i, :, :))';
-                %v = squeeze(model.V(fb_i, :, :))';
             end
-            %template_num = size(template, 3);
-            %supplement_num = size(supplement, 3);           
-            template_mean = mean(template, 3);
-            %supplement_mean = mean(supplement, 3);
+        
+            train_proj = train.' * w;
+ 
+%             template = squeeze(model.template(class_i, fb_i, :, :, :));
+%             train_size = size(template, 3);
+%             train_proj_sum = train_size * squeeze(mean(template, 3)).' * w;
+%             
+%             for i_sup = 1 : supplement_num
+%                 tmp_supplement = squeeze(model.supplement_cell{i_sup}(class_i, fb_i, :, :, :));
+%                 tmp_sup_size = size(tmp_supplement, 3);
+%                 
+%                 if ~is_ensemble
+%                     tmp_v = squeeze(model.V_cell{i_sup}(fb_i, class_i, :));
+%                 else
+%                     tmp_v = squeeze(model.V_cell{i_sup}(fb_i, :, :)).';
+%                 end
+%                 
+%                 train_size = train_size + tmp_sup_size;
+%                 train_proj_sum = train_proj_sum + tmp_sup_size * squeeze(mean(tmp_supplement, 3)).' * tmp_v; 
+%             end
+ 
+%             train_proj = train_proj_sum / train_size;          
             
-%             traindata_proj = (template_num * template_mean.' * w ...
-%                 + supplement_num * supplement_mean.' * v) ...
-%                 / (template_num + supplement_num);            
-            
-            %traindata_proj = template_mean.' * w;
-            traindata_proj = traindata.' * w;
-            
-            r_tmp = corrcoef(testdata_tmp'*w, traindata_proj);
+            r_tmp = corrcoef(testdata_tmp'*w, train_proj);
             r(fb_i,class_i) = r_tmp(1,2);
         end % class_i
     end % fb_i
