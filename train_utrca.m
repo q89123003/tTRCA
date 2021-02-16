@@ -1,4 +1,4 @@
-function model = train_utrca(templates, supplements, fs, num_fbs, pad_length)
+function model = train_utrca(templates, supplements, fs, num_fbs, pad_length, list_freqs, num_harms)
 % including original TRCA, LST, Transfer-TRCA
 
 if nargin < 3
@@ -9,8 +9,16 @@ if ~exist('num_fbs', 'var') || isempty(num_fbs), num_fbs = 3; end
 
 if ~exist('pad_length', 'var') || isempty(pad_length), pad_length = 0; end
 
+if ~exist('list_freqs', 'var') || ~exist('num_harms', 'var') || isempty(list_freqs) || isempty(num_harms)
+    add_cca_template = false;
+else
+    add_cca_template = true;
+end
+
 [num_targs, num_chans, num_smpls, ~] = size(templates);
 num_smpls = num_smpls - pad_length;
+num_suppls = size(supplements, 1);
+
 trains = zeros(num_targs, num_fbs, num_chans, num_smpls);
 W = zeros(num_fbs, num_targs, num_chans);
 
@@ -22,10 +30,17 @@ ttrca_supplement_cell = cell(size(supplements));
 ttrca_W = zeros(num_fbs, num_targs, num_chans);
 ttrca_V_cell = cell(size(supplements));
 
-for i_c = 1 : size(ttrca_supplement_cell, 1)
+for i_c = 1 : num_suppls
     ttrca_supplement_cell{i_c} = zeros(num_targs, num_fbs, size(supplements{i_c}, 2), num_smpls, size(supplements{i_c}, 4));   
     ttrca_V_cell{i_c} = zeros(num_fbs, num_targs, size(supplements{i_c}, 2));
 end
+
+if add_cca_template
+    y_ref = cca_reference(list_freqs, fs, num_smpls, num_harms);
+    ttrca_supplement_cell = [ttrca_supplement_cell; zeros(num_targs, num_fbs, size(y_ref, 2), num_smpls, 1)];
+    ttrca_V_cell = [ttrca_V_cell; zeros(num_fbs, num_targs, size(y_ref, 2))];
+end
+
 
 for targ_i = 1:1:num_targs
     template_targ = squeeze(templates(targ_i, :, :, :));
@@ -36,7 +51,7 @@ for targ_i = 1:1:num_targs
         template_tmp = template_tmp - mean(template_tmp, 2);
         supplement_cat = zeros(num_chans, num_smpls, 0);   
         supplement_tmp = cell(size(supplements));
-        for i_c = 1 : size(ttrca_supplement_cell, 1)
+        for i_c = 1 : size(supplements, 1)
             sup_targ_temp = squeeze(supplements{i_c}(targ_i, :, :, :));
             %sup_tmp = filterbank(sup_targ_temp, fs, fb_i);
             sup_tmp = filterbank_pad(sup_targ_temp, fs, pad_length, fb_i);
@@ -46,6 +61,12 @@ for targ_i = 1:1:num_targs
             
             supplement_tmp{i_c} = sup_tmp;
             ttrca_supplement_cell{i_c}(targ_i, fb_i, :, :, :) = sup_tmp;
+        end
+        
+        if add_cca_template
+            tmp_cca_template = repmat(squeeze(y_ref(targ_i, :, :)), 1, 1, 1);
+            supplement_tmp = [supplement_tmp; tmp_cca_template];
+            ttrca_supplement_cell{end}(targ_i, fb_i, :, :, :) = repmat(squeeze(y_ref(targ_i, :, :)), 1, 1, 1);
         end
 
         template_tmp_mean = squeeze(mean(template_tmp, 3));
@@ -113,10 +134,17 @@ for trial_i = 1:1:num_t0
     end % trial_j
 end % trial_i
 
+if num_t0 >= 2
+    S_0 = S_0 / (num_t0 * (num_t0 - 1));
+else
+    S_0 = eye(num_ch0);
+end
+
 S(1 : num_ch0, 1 : num_ch0) = S_0;
 
 UX_0 = reshape(template, num_ch0, num_smpls*num_t0);
 Q_0 = UX_0*UX_0';
+Q_0 = Q_0 / num_t0;
 
 Q(1 : num_ch0, 1 : num_ch0) = Q_0;
 num_ch_cml = num_ch0;
@@ -134,6 +162,12 @@ for i_c = 1 : size(supplement, 1)
         end % trial_j
     end % trial_i
 
+    if num_ti >= 2
+        S_i = S_i / (num_ti * (num_ti - 1));
+    else
+        S_i = eye(num_chi);
+    end
+
     S(num_ch_cml + 1 : num_ch_cml + num_chi, ...
         num_ch_cml + 1 : num_ch_cml + num_chi) = S_i;
         
@@ -146,6 +180,7 @@ for i_c = 1 : size(supplement, 1)
         end % trial_j
     end % trial_i
     
+    S_0i = S_0i / (num_t0 * num_ti);
     S(1 : num_ch0, num_ch_cml + 1 : num_ch_cml + num_chi) = S_0i;
     S(num_ch_cml + 1 : num_ch_cml + num_chi, 1 : num_ch0) = S_0i.';   
 
@@ -171,6 +206,7 @@ for i_c = 1 : size(supplement, 1)
     
     UX_i = reshape(sup_i, num_chi, num_smpls * num_ti);
     Q_i = UX_i*UX_i.';
+    Q_i = Q_i / num_ti;
 
     Q(num_ch_cml + 1 : num_ch_cml + num_chi, ...
         num_ch_cml + 1 : num_ch_cml + num_chi) = Q_i;
@@ -226,8 +262,62 @@ for trial_i = 1:1:num_trials
         S = S + x1*x2' + x2*x1';
     end % trial_j
 end % trial_i
+
+if num_trials == 1
+    S = eye(num_chans);
+end
 UX = reshape(eeg, num_chans, num_smpls*num_trials);
 
 Q = UX*UX';
 [W,V] = eigs(S, Q);
 
+function [ y_ref ] = cca_reference(list_freqs, fs, num_smpls, num_harms)
+% Generate reference signals for the canonical correlation analysis (CCA)
+% -based steady-state visual evoked potentials (SSVEPs) detection [1, 2].
+%
+% function [ y_ref ] = cca_reference(listFreq, fs,  nSmpls, nHarms)
+% 
+% Input:
+%   listFreq        : List for stimulus frequencies
+%   fs              : Sampling frequency
+%   nSmpls          : # of samples in an epoch
+%   nHarms          : # of harmonics
+%
+% Output:
+%   y_ref           : Generated reference signals
+%                    (# of targets, 2*# of channels, Data length [sample])
+%
+% Reference:
+%   [1] Z. Lin, C. Zhang, W. Wu, and X. Gao,
+%       "Frequency Recognition Based on Canonical Correlation Analysis for 
+%        SSVEP-Based BCI",
+%       IEEE Trans. Biomed. Eng., 54(6), 1172-1176, 2007.
+%   [2] G. Bin, X. Gao, Z. Yan, B. Hong, and S. Gao,
+%       "An online multi-channel SSVEP-based brain-computer interface using
+%        a canonical correlation analysis method",
+%       J. Neural Eng., 6 (2009) 046002 (6pp).
+%
+% Masaki Nakanishi, 28-Jul-2016
+% Swartz Center for Computational Neuroscience, Institute for Neural
+% Computation, University of California San Diego
+% E-mail: masaki@sccn.ucsd.edu
+
+if nargin < 3 
+    error('stats:cca_reference:LackOfInput',...
+        'Not enough input arguments.');
+end
+
+if ~exist('num_harms', 'var') || isempty(num_harms), num_harms = 3; end
+
+num_freqs = length(list_freqs);
+tidx = (1:num_smpls)/fs;
+for freq_i = 1:1:num_freqs
+    tmp = [];
+    for harm_i = 1:1:num_harms
+        stim_freq = list_freqs(freq_i);
+        tmp = [tmp;...
+            sin(2*pi*tidx*harm_i*stim_freq);...
+            cos(2*pi*tidx*harm_i*stim_freq)];
+    end % harm_i
+    y_ref(freq_i, 1:2*num_harms, 1:num_smpls) = tmp;
+end % freq_i
