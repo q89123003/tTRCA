@@ -127,15 +127,18 @@ Q = zeros(total_channel_num);
 
 S_0 = zeros(num_ch0);
 for trial_i = 1:1:num_t0
+    x1 = squeeze(template(:,:,trial_i));
+    S_0 = S_0 + x1 * x1.';
     for trial_j = trial_i+1:1:num_t0
-        x1 = squeeze(template(:,:,trial_i));
         x2 = squeeze(template(:,:,trial_j));
         S_0 = S_0 + x1*x2' + x2*x1';
     end % trial_j
+    
 end % trial_i
 
-if num_t0 >= 2
-    S_0 = S_0 / (num_t0 * (num_t0 - 1));
+if num_t0 >= 1
+    S_0 = S_0 / num_t0 ^ 2;
+    %S_0 = S_0 / (num_t0 * (num_t0 - 1));
 else
     S_0 = eye(num_ch0);
 end
@@ -155,15 +158,17 @@ for i_c = 1 : size(supplement, 1)
 
     S_i = zeros(num_chi);
     for trial_i = 1:1:num_ti
+        x1 = squeeze(sup_i(:,:,trial_i));
+        S_i = S_i + x1 * x1.';
         for trial_j = trial_i+1:1:num_ti
-            x1 = squeeze(sup_i(:,:,trial_i));
             x2 = squeeze(sup_i(:,:,trial_j));
             S_i = S_i + x1*x2' + x2*x1';
         end % trial_j
     end % trial_i
 
-    if num_ti >= 2
-        S_i = S_i / (num_ti * (num_ti - 1));
+    if num_ti >= 1
+        S_i = S_i / num_ti ^ 2;
+        %S_i = S_i / (num_ti * (num_ti - 1));
     else
         S_i = eye(num_chi);
     end
@@ -256,16 +261,17 @@ function [W, V] = trca(eeg) % Origial
 [num_chans, num_smpls, num_trials]  = size(eeg);
 S = zeros(num_chans);
 for trial_i = 1:1:num_trials
+    x1 = squeeze(eeg(:,:,trial_i));
+    S = S + x1 * x1.';
     for trial_j = trial_i+1:1:num_trials
-        x1 = squeeze(eeg(:,:,trial_i));
         x2 = squeeze(eeg(:,:,trial_j));
         S = S + x1*x2' + x2*x1';
     end % trial_j
 end % trial_i
 
-if num_trials == 1
-    S = eye(num_chans);
-end
+% if num_trials == 1
+%     S = eye(num_chans);
+% end
 UX = reshape(eeg, num_chans, num_smpls*num_trials);
 
 Q = UX*UX';
