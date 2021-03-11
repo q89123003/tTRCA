@@ -116,6 +116,8 @@ model = struct('num_fbs', num_fbs, 'fs', fs, 'num_targs', num_targs, 'pad_length
 function [W, Vs, eigv] = ttrca(template, supplement)
 [num_ch0, num_smpls, num_t0]  = size(template);
 
+template_mean = mean(template, 3);
+
 total_channel_num = num_ch0;
 
 for i_c = 1 : size(supplement, 1)
@@ -136,12 +138,8 @@ for trial_i = 1:1:num_t0
     
 end % trial_i
 
-if num_t0 >= 1
-    S_0 = S_0 / num_t0 ^ 2;
-    %S_0 = S_0 / (num_t0 * (num_t0 - 1));
-else
-    S_0 = eye(num_ch0);
-end
+
+S_0 = S_0 / num_t0 ^ 2;
 
 S(1 : num_ch0, 1 : num_ch0) = S_0;
 
@@ -156,6 +154,10 @@ for i_c = 1 : size(supplement, 1)
     sup_i = supplement{i_c};
     [num_chi, ~, num_ti] = size(sup_i);
 
+    sup_mean = mean(sup_i, 3);
+    r = corrcoef(template_mean, sup_mean);
+    similarity = r(1, 2);
+    
     S_i = zeros(num_chi);
     for trial_i = 1:1:num_ti
         x1 = squeeze(sup_i(:,:,trial_i));
@@ -166,12 +168,7 @@ for i_c = 1 : size(supplement, 1)
         end % trial_j
     end % trial_i
 
-    if num_ti >= 1
-        S_i = S_i / num_ti ^ 2;
-        %S_i = S_i / (num_ti * (num_ti - 1));
-    else
-        S_i = eye(num_chi);
-    end
+    S_i = S_i / num_ti ^ 2;
 
     S(num_ch_cml + 1 : num_ch_cml + num_chi, ...
         num_ch_cml + 1 : num_ch_cml + num_chi) = S_i;
@@ -214,7 +211,7 @@ for i_c = 1 : size(supplement, 1)
     Q_i = Q_i / num_ti;
 
     Q(num_ch_cml + 1 : num_ch_cml + num_chi, ...
-        num_ch_cml + 1 : num_ch_cml + num_chi) = Q_i;
+        num_ch_cml + 1 : num_ch_cml + num_chi) = Q_i * similarity;
 
     num_ch_cml = num_ch_cml + num_chi;
 end

@@ -9,8 +9,8 @@ nHarms = 3;
 isEnsemble = true;
 channels = [53 : 59 61 : 63];
 delay = round(0.65 * fs);
-length = 1 * fs;
-datasets = 1 : 2;
+length = 0.8 * fs;
+datasets = 1;
 %%
 for dataset = datasets
     if dataset == 1
