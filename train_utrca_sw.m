@@ -1,4 +1,4 @@
-function model = train_utrca(templates, supplements, fs, num_fbs, pad_length, list_freqs, num_harms)
+function model = train_utrca_sw(templates, supplements, fs, num_fbs, pad_length, list_freqs, num_harms)
 % including original TRCA, LST, Transfer-TRCA
 
 if nargin < 3
@@ -51,11 +51,18 @@ for targ_i = 1:1:num_targs
         template_tmp = template_tmp - mean(template_tmp, 2);
         supplement_cat = zeros(num_chans, num_smpls, 0);   
         supplement_tmp = cell(size(supplements));
+        
+        template_tmp_mean = mean(template_tmp, 3);
+        weights_tmp = zeros(size(supplements, 1), 1);
         for i_c = 1 : size(supplements, 1)
             sup_targ_temp = squeeze(supplements{i_c}(targ_i, :, :, :));
             %sup_tmp = filterbank(sup_targ_temp, fs, fb_i);
             sup_tmp = filterbank_pad(sup_targ_temp, fs, pad_length, fb_i);
             sup_tmp = sup_tmp - mean(sup_tmp, 2);
+            
+            sup_tmp_mean = mean(sup_tmp, 3);
+            corr_tmp = corrcoef(template_tmp_mean, sup_tmp_mean);
+            weights_tmp(i_c) = corr_tmp(1, 2);
             
             supplement_cat = cat(3, supplement_cat, sup_tmp);
             
@@ -67,10 +74,9 @@ for targ_i = 1:1:num_targs
             tmp_cca_template = repmat(squeeze(y_ref(targ_i, :, :)), 1, 1, 1);
             supplement_tmp = [supplement_tmp; tmp_cca_template];
             ttrca_supplement_cell{end}(targ_i, fb_i, :, :, :) = repmat(squeeze(y_ref(targ_i, :, :)), 1, 1, 1);
+            weights_tmp = [weights_tmp; 1];
         end
 
-        template_tmp_mean = squeeze(mean(template_tmp, 3));
-        
         % baseline trca
         trains(targ_i,fb_i,:,:) = template_tmp_mean;
         [w_tmp, ~] = trca(template_tmp);
@@ -113,7 +119,11 @@ model = struct('num_fbs', num_fbs, 'fs', fs, 'num_targs', num_targs, 'pad_length
     'ttrca_W', ttrca_W, 'ttrca_V_cell', {ttrca_V_cell}, ... % ttrca
     'ttrca_template', ttrca_template, 'ttrca_supplement_cell', {ttrca_supplement_cell}); % ttrca
 
-function [W, Vs, eigv] = ttrca(template, supplement)
+function [W, Vs, eigv] = ttrca(template, supplement, weights)
+
+if ~exist('weights', 'var') || isempty(weights)
+    weights = ones(size(supplement, 1), 1);
+end
 
 [num_ch0, num_smpls, num_t0]  = size(template);
 
@@ -206,7 +216,7 @@ for i_c = 1 : size(supplement, 1)
     Q_i = Q_i / num_ti;
 
     Q(num_ch_cml + 1 : num_ch_cml + num_chi, ...
-        num_ch_cml + 1 : num_ch_cml + num_chi) = Q_i;
+        num_ch_cml + 1 : num_ch_cml + num_chi) = Q_i / (1 + weights(i_c)) * 2;
 
     num_ch_cml = num_ch_cml + num_chi;
 end
