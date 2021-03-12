@@ -211,7 +211,7 @@ for i_c = 1 : size(supplement, 1)
     Q_i = Q_i / num_ti;
 
     Q(num_ch_cml + 1 : num_ch_cml + num_chi, ...
-        num_ch_cml + 1 : num_ch_cml + num_chi) = Q_i * similarity;
+        num_ch_cml + 1 : num_ch_cml + num_chi) = Q_i / similarity;
 
     num_ch_cml = num_ch_cml + num_chi;
 end
