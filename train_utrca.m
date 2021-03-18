@@ -49,18 +49,18 @@ for targ_i = 1:1:num_targs
         %template_tmp = filterbank(template_targ, fs, fb_i);
         template_tmp = filterbank_pad(template_targ, fs, pad_length, fb_i);
         template_tmp = template_tmp - mean(template_tmp, 2);
-        supplement_cat = zeros(num_chans, num_smpls, 0);   
         supplement_tmp = cell(size(supplements));
+        total_sup_num = 0;
         for i_c = 1 : size(supplements, 1)
             sup_targ_temp = squeeze(supplements{i_c}(targ_i, :, :, :));
             %sup_tmp = filterbank(sup_targ_temp, fs, fb_i);
             sup_tmp = filterbank_pad(sup_targ_temp, fs, pad_length, fb_i);
             sup_tmp = sup_tmp - mean(sup_tmp, 2);
-            
-            supplement_cat = cat(3, supplement_cat, sup_tmp);
-            
+                        
             supplement_tmp{i_c} = sup_tmp;
             ttrca_supplement_cell{i_c}(targ_i, fb_i, :, :, :) = sup_tmp;
+            
+            total_sup_num = total_sup_num + size(sup_tmp, 3);
         end
         
         if add_cca_template
@@ -78,15 +78,21 @@ for targ_i = 1:1:num_targs
         
         % lst
         Y = template_tmp_mean;
-        transferred_eeg_tmp = zeros(num_chans, num_smpls, size(supplement_cat, 3));
+        transferred_eeg_tmp = zeros(num_chans, num_smpls, total_sup_num);
         
-        for trialIdx = 1 : size(supplement_cat, 3)
-            
-            single_trial_eeg_tmp = squeeze(supplement_cat(:, :, trialIdx));
-            
-            X = [ones(1, size(Y, 2)); single_trial_eeg_tmp];
+        sup_count = 0;
+        for i_c = 1 : size(supplement_tmp, 1)
+            sup_tmp = supplement_tmp{i_c};
+            sup_tmp_mean = mean(sup_tmp, 3);
+            X = [ones(1, size(Y, 2)); sup_tmp_mean];
             b = Y * X.' / (X * X.');
-            transferred_eeg_tmp(:, :, trialIdx) = (b * X);
+            
+            for trialIdx = 1 : size(sup_tmp, 3)
+                sup_count = sup_count + 1;
+                single_trial_eeg_tmp = squeeze(sup_tmp(:, :, trialIdx));
+                X_trial = [ones(1, size(Y, 2)); single_trial_eeg_tmp];
+                transferred_eeg_tmp(:, :, sup_count) = (b * X_trial);
+            end
         end
         
         transferred_eeg_tmp = cat(3, template_tmp, transferred_eeg_tmp);

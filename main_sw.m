@@ -2,6 +2,7 @@ clear, close all;
 
 method_legends = {'original', 'LST', 'trans'};
 method_num = 3;
+LogicalStr = {'false', 'true'};
 
 fs = 250;
 nFBs = 5;
@@ -9,7 +10,7 @@ nHarms = 3;
 isEnsemble = true;
 channels = [53 : 59 61 : 63];
 delay = round(0.65 * fs);
-length = 0.8 * fs;
+length = 1 * fs;
 datasets = 1;
 %%
 for dataset = datasets
@@ -70,7 +71,7 @@ for dataset = datasets
         permutations = perms(1 : size(subject_eeg{1}, 4));
     end
 
-    subject_accs = zeros(method_num, method_num, size(target_subjects, 2), size(template_sizes, 2), size(permutations, 1));
+    subject_accs = zeros(2, method_num, method_num, size(target_subjects, 2), size(template_sizes, 2), size(permutations, 1));
 
     for i_subject = 1 : size(target_subjects, 2)
         subject = target_subjects(i_subject);
@@ -101,31 +102,38 @@ for dataset = datasets
 
                 %model = train_utrca(template, sup_eeg, fs, nFBs, delay, list_freqs, nHarms);
                 model = train_utrca(template, sup_eeg, fs, nFBs, delay);
+                model_sw = train_utrca_sw(template, sup_eeg, fs, nFBs, delay);
 
-                for i_sf_m = 1 : method_num
-                    for i_template_m = 1 : method_num
-                        if i_sf_m <= 2 && i_template_m == 3
-                            continue;
+                for i_sw = 1 : 2
+                    for i_sf_m = 2 : method_num
+                        for i_template_m = 2 : method_num
+                            if i_sf_m <= 2 && i_template_m == 3
+                                continue;
+                            end
+
+                            % Test phase ---------------------------------------
+                            if i_sw == 1
+                                tmp_estimated = test_utrca(test, model, isEnsemble, i_sf_m, i_template_m);
+                            elseif i_sw == 2
+                                tmp_estimated = test_utrca(test, model_sw, isEnsemble, i_sf_m, i_template_m);
+                            end
+
+                            % Evaluation ----------------------------------------
+                            tmp_isCorrect = (tmp_estimated == valTrue);
+                            tmp_acc = mean(tmp_isCorrect);
+
+                            fprintf('Subject weighting - %s; Spatial fileter - %s; Template - %s: Averaged accuracy = %2.2f%%\n\n', ...
+                               LogicalStr{i_sw}, method_legends{i_sf_m}, method_legends{i_template_m}, tmp_acc*100);
+
+                            subject_accs(i_sw, i_sf_m, i_template_m, i_subject, i_ts, i_perm) = tmp_acc;
                         end
-
-                        % Test phase ---------------------------------------
-                        tmp_estimated = test_utrca(test, model, isEnsemble, i_sf_m, i_template_m);
-
-                        % Evaluation ----------------------------------------
-                        tmp_isCorrect = (tmp_estimated == valTrue);
-                        tmp_acc = mean(tmp_isCorrect);
-
-                        fprintf('Spatial fileter - %s; Template - %s: Averaged accuracy = %2.2f%%\n\n', ...
-                           method_legends{i_sf_m}, method_legends{i_template_m}, tmp_acc*100);
-
-                        subject_accs(i_sf_m, i_template_m, i_subject, i_ts, i_perm) = tmp_acc;
                     end
                 end
             end
         end
 
-        subject_acc = subject_accs(:, :, i_subject, :, :);
-        save(sprintf('./results/dataset%d/Len%d_S%d.mat', dataset, length / fs * 1000, subject), 'subject_acc');
+        subject_acc = subject_accs(:, :, :, i_subject, :, :);
+        save(sprintf('./results/dataset%d/SW_Len%d_S%d.mat', dataset, length / fs * 1000, subject), 'subject_acc');
     end
 
     %%
@@ -133,17 +141,19 @@ for dataset = datasets
     results = zeros(size(template_sizes, 2), size(target_subjects, 2), 0);
     model_names = {};
     model_count = 0;
-    for i_sf_m = 1 : method_num
-        for i_template_m = 1 : method_num
-            if i_sf_m <= 2 && i_template_m == 3
-                continue;
+    for i_sw = 1 : 2
+        for i_sf_m = 2 : method_num
+            for i_template_m = 2 : method_num
+                if i_sf_m <= 2 && i_template_m == 3
+                    continue;
+                end
+
+                model_count = model_count + 1;
+                results(:, :, model_count) = squeeze(mean(subject_accs(i_sw, i_sf_m, i_template_m, :, :, :), 6)).';
+
+                model_names = [model_names sprintf('Subject weighting - %s Spatial fileter - %s; Template - %s', ...
+                    LogicalStr{i_sw}, method_legends{i_sf_m}, method_legends{i_template_m})];
             end
-
-            model_count = model_count + 1;
-            results(:, :, model_count) = squeeze(mean(subject_accs(i_sf_m, i_template_m, :, :, :), 5)).';
-
-            model_names = [model_names sprintf('Spatial fileter - %s; Template - %s', ...
-                method_legends{i_sf_m}, method_legends{i_template_m})];
         end
     end
 
@@ -165,5 +175,5 @@ for dataset = datasets
     xlabel('Number of calibration trials per class');
     title(sprintf('Dataset %d. Length: %d ms', dataset, length / fs * 1000));
     
-    saveas(f, sprintf('./results/dataset%d/Len%d.fig', dataset, length / fs * 1000));
+    saveas(f, sprintf('./results/dataset%d/SW_Len%d.fig', dataset, length / fs * 1000));
 end
