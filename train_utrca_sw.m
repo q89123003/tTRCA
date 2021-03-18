@@ -30,7 +30,7 @@ ttrca_supplement_cell = cell(size(supplements));
 ttrca_W = zeros(num_fbs, num_targs, num_chans);
 ttrca_V_cell = cell(size(supplements));
 
-fb_coefs = [1:model.num_fbs].^(-1.25)+0.25;
+fb_coefs = [1:num_fbs].^(-1.25)+0.25;
 
 for i_c = 1 : num_suppls
     ttrca_supplement_cell{i_c} = zeros(num_targs, num_fbs, size(supplements{i_c}, 2), num_smpls, size(supplements{i_c}, 4));   
