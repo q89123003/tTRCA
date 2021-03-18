@@ -30,6 +30,8 @@ ttrca_supplement_cell = cell(size(supplements));
 ttrca_W = zeros(num_fbs, num_targs, num_chans);
 ttrca_V_cell = cell(size(supplements));
 
+fb_coefs = [1:model.num_fbs].^(-1.25)+0.25;
+
 for i_c = 1 : num_suppls
     ttrca_supplement_cell{i_c} = zeros(num_targs, num_fbs, size(supplements{i_c}, 2), num_smpls, size(supplements{i_c}, 4));   
     ttrca_V_cell{i_c} = zeros(num_fbs, num_targs, size(supplements{i_c}, 2));
@@ -44,6 +46,26 @@ end
 
 for targ_i = 1:1:num_targs
     template_targ = squeeze(templates(targ_i, :, :, :));
+    weights_tmp = zeros(size(supplements, 1), num_fbs);
+    
+    % generate weights
+    for fb_i = 1:1:num_fbs
+        template_tmp = filterbank_pad(template_targ, fs, pad_length, fb_i);
+        template_tmp = template_tmp - mean(template_tmp, 2); 
+        template_tmp_mean = mean(template_tmp, 3);
+        
+        for i_c = 1 : size(supplements, 1)
+            sup_targ_temp = squeeze(supplements{i_c}(targ_i, :, :, :));
+            sup_tmp = filterbank_pad(sup_targ_temp, fs, pad_length, fb_i);
+            sup_tmp = sup_tmp - mean(sup_tmp, 2);
+            sup_tmp_mean = mean(sup_tmp, 3);
+            
+            corr_tmp = corrcoef(template_tmp_mean, sup_tmp_mean);
+            weights_tmp(i_c, fb_i) = corr_tmp(1, 2);
+        end
+    end
+    
+    weights_targ = weights_tmp * fb_coefs;
 
     for fb_i = 1:1:num_fbs
         %template_tmp = filterbank(template_targ, fs, fb_i);
@@ -52,7 +74,6 @@ for targ_i = 1:1:num_targs
         supplement_tmp = cell(size(supplements));
         
         template_tmp_mean = mean(template_tmp, 3);
-        weights_tmp = zeros(size(supplements, 1), 1);
         total_sup_num = 0;
         for i_c = 1 : size(supplements, 1)
             sup_targ_temp = squeeze(supplements{i_c}(targ_i, :, :, :));
@@ -61,8 +82,6 @@ for targ_i = 1:1:num_targs
             sup_tmp = sup_tmp - mean(sup_tmp, 2);
             
             sup_tmp_mean = mean(sup_tmp, 3);
-            corr_tmp = corrcoef(template_tmp_mean, sup_tmp_mean);
-            weights_tmp(i_c) = (1 + corr_tmp(1, 2)) / 2;
                        
             supplement_tmp{i_c} = sup_tmp;
             ttrca_supplement_cell{i_c}(targ_i, fb_i, :, :, :) = sup_tmp;
@@ -74,7 +93,7 @@ for targ_i = 1:1:num_targs
             tmp_cca_template = repmat(squeeze(y_ref(targ_i, :, :)), 1, 1, 1);
             supplement_tmp = [supplement_tmp; tmp_cca_template];
             ttrca_supplement_cell{end}(targ_i, fb_i, :, :, :) = repmat(squeeze(y_ref(targ_i, :, :)), 1, 1, 1);
-            weights_tmp = [weights_tmp; 1];
+            weights_targ = [weights_targ; 1];
         end
 
         % baseline trca
@@ -97,7 +116,7 @@ for targ_i = 1:1:num_targs
                 sup_count = sup_count + 1;
                 single_trial_eeg_tmp = squeeze(sup_tmp(:, :, trialIdx));
                 X_trial = [ones(1, size(Y, 2)); single_trial_eeg_tmp];
-                transferred_eeg_tmp(:, :, sup_count) = (b * X_trial) * weights_tmp(i_c);
+                transferred_eeg_tmp(:, :, sup_count) = (b * X_trial) * weights_targ(i_c)^0.5;
             end
         end
         
@@ -107,7 +126,7 @@ for targ_i = 1:1:num_targs
         lst_W(fb_i, targ_i, :) = w_tmp(:,1);
         
         % ttrca  
-        [w_tmp, v_tmp_cell, ~] = ttrca(template_tmp, supplement_tmp, weights_tmp);
+        [w_tmp, v_tmp_cell, ~] = ttrca(template_tmp, supplement_tmp, weights_targ);
         ttrca_template(targ_i, fb_i, :, :, :) = template_tmp;             
         
         ttrca_W(fb_i, targ_i, :) = w_tmp(:,1);
@@ -128,6 +147,7 @@ model = struct('num_fbs', num_fbs, 'fs', fs, 'num_targs', num_targs, 'pad_length
 function [W, Vs, eigv] = ttrca(template, supplement, weights)
 
 if ~exist('weights', 'var') || isempty(weights)
+    disp('something wrong');
     weights = ones(size(supplement, 1), 1);
 end
 
