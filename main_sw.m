@@ -10,7 +10,7 @@ nHarms = 3;
 isEnsemble = true;
 channels = [53 : 59 61 : 63];
 delay = round(0.65 * fs);
-length = 1 * fs;
+length = 0.5 * fs;
 datasets = 1;
 %%
 for dataset = datasets
@@ -165,7 +165,8 @@ for dataset = datasets
         legends = [legends tmp_legend];
     end
 
-    pairs = nchoosek(1 : model_count, 2);
+    %pairs = nchoosek(1 : model_count, 2);
+    pairs = [1:3; 4:6].';
 
     f = bar_error_pval(results, colors, pairs, legends, [10 10 460 610]);
     ylabel('Accuracy');
