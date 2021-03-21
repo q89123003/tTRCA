@@ -43,12 +43,12 @@ if add_cca_template
     ttrca_V_cell = [ttrca_V_cell; zeros(num_fbs, num_targs, size(y_ref, 2))];
 end
 
-
+% generate weights
+weight_targs = zeros(size(supplements, 1), num_targs);
 for targ_i = 1:1:num_targs
     template_targ = squeeze(templates(targ_i, :, :, :));
     weights_tmp = zeros(size(supplements, 1), num_fbs);
-    
-    % generate weights
+     
     for fb_i = 1:1:num_fbs
         template_tmp = filterbank_pad(template_targ, fs, pad_length, fb_i);
         template_tmp = template_tmp - mean(template_tmp, 2); 
@@ -60,12 +60,18 @@ for targ_i = 1:1:num_targs
             sup_tmp = sup_tmp - mean(sup_tmp, 2);
             sup_tmp_mean = mean(sup_tmp, 3);
             
-            corr_tmp = corrcoef(template_tmp_mean, sup_tmp_mean);
-            weights_tmp(i_c, fb_i) = corr_tmp(1, 2);
+            [~,~,r_tmp] = canoncorr(template_tmp_mean.',sup_tmp_mean.');
+            weights_tmp(i_c, fb_i) = r_tmp(1, 1);
         end
     end
     
-    weights_targ = weights_tmp * fb_coefs;
+    weight_targs(:, targ_i) = weights_tmp * fb_coefs.';
+end
+
+weights = mean(weight_targs, 2);
+
+for targ_i = 1:1:num_targs
+    template_targ = squeeze(templates(targ_i, :, :, :));
 
     for fb_i = 1:1:num_fbs
         %template_tmp = filterbank(template_targ, fs, fb_i);
@@ -93,7 +99,7 @@ for targ_i = 1:1:num_targs
             tmp_cca_template = repmat(squeeze(y_ref(targ_i, :, :)), 1, 1, 1);
             supplement_tmp = [supplement_tmp; tmp_cca_template];
             ttrca_supplement_cell{end}(targ_i, fb_i, :, :, :) = repmat(squeeze(y_ref(targ_i, :, :)), 1, 1, 1);
-            weights_targ = [weights_targ; 1];
+            weights = [weights; 1];
         end
 
         % baseline trca
@@ -116,7 +122,7 @@ for targ_i = 1:1:num_targs
                 sup_count = sup_count + 1;
                 single_trial_eeg_tmp = squeeze(sup_tmp(:, :, trialIdx));
                 X_trial = [ones(1, size(Y, 2)); single_trial_eeg_tmp];
-                transferred_eeg_tmp(:, :, sup_count) = (b * X_trial) * weights_targ(i_c)^0.5;
+                transferred_eeg_tmp(:, :, sup_count) = (b * X_trial) * weights(i_c)^0.5;
             end
         end
         
@@ -126,7 +132,7 @@ for targ_i = 1:1:num_targs
         lst_W(fb_i, targ_i, :) = w_tmp(:,1);
         
         % ttrca  
-        [w_tmp, v_tmp_cell, ~] = ttrca(template_tmp, supplement_tmp, weights_targ);
+        [w_tmp, v_tmp_cell, ~] = ttrca(template_tmp, supplement_tmp, weights);
         ttrca_template(targ_i, fb_i, :, :, :) = template_tmp;             
         
         ttrca_W(fb_i, targ_i, :) = w_tmp(:,1);
