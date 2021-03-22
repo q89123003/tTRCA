@@ -98,11 +98,7 @@ for targ_i = 1:1:model.num_targs
             r(fb_i,class_i) = r_tmp(1,2);
         end % class_i
     end % fb_i
-    try
-       rho = fb_coefs*r;
-    catch exception
-       disp('something wrong');
-    end
+    
     rho = fb_coefs*r;
     [~, tau] = max(rho);
     results(targ_i) = tau;
