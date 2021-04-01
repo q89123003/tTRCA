@@ -19,7 +19,7 @@ num_of_signal_templates=12 ;         % for multi-stimulus cca
 num_of_signal_templates2=12;         % for multi-stimulus trca
 num_of_signal_templates3=40;         % for subject transfer
 f_idx=[1:40];
-dataset_no=2;                        % 1:learning from the same dataset, 2:learning from another dataset
+dataset_no=1;                        % 1:learning from the same dataset, 2:learning from another dataset
 
 num_of_subbands=5;                   % for filter bank analysis
 t_length0=0.2;
@@ -431,11 +431,11 @@ for sn=1:35
                                 etrca2R(sub_band,j)=0;
                             end                          
                             
-                        % ----- LST -----            
-                        r_tmp = corrcoef(test_signal.'*squeeze(LST_spatial_filters{tw_length}(sub_band, :, :)).', ...
-                           squeeze(LST_templates{tw_length}(sub_band, j, :, :)).'*squeeze(LST_spatial_filters{tw_length}(sub_band, :, :)).');
-                        LST_r(sub_band,j) = r_tmp(1,2);
-                        % ----- LST -----
+                            % ----- LST -----            
+                            r_tmp = corrcoef(test_signal.'*squeeze(LST_spatial_filters{tw_length}(sub_band, :, :)).', ...
+                               squeeze(LST_templates{tw_length}(sub_band, j, :, :)).'*squeeze(LST_spatial_filters{tw_length}(sub_band, :, :)).');
+                            LST_r(sub_band,j) = sign(r_tmp(1, 2))*r_tmp(1, 2)^2 + sign(r1(1,2))*r1(1,2)^2;
+                            % ----- LST -----
                         end  
                     end
                     CCAR1=sum((CCAR).*FB_coef,1);           
