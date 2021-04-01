@@ -66,13 +66,15 @@ for sn=1:70
 %         mu_ssvep=mu_ssvep./(std(mu_ssvep')'*ones(1,length(mu_ssvep)));
         subj(sn).ssvep_template(:,:,i)=mu_ssvep;
         
-        % for LST
+        % ----- LST -----
         subj(sn).SSVEPdata(:, :, :, i)=SSVEPdata;
+        % ----- LST -----
     end
     subj(sn).ssvep_template=subj(sn).ssvep_template(:,:,target_order);
     
-    % for LST
+    % ----- LST -----
     subj(sn).SSVEPdata = subj(sn).SSVEPdata(:,:,:,target_order);
+    % ----- LST -----
     
     clear eeg data1    
     toc

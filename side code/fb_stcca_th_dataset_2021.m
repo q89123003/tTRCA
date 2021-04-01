@@ -78,19 +78,22 @@ for k=1:num_of_subbands
         for m=1:40
             tmp=subj(sn).ssvep_template(:,:,m);
             
-            % for LST
+            % ----- LST -----
             tmp_ssvepdata = subj(sn).SSVEPdata(:, :, :, m);
+            % ----- LST -----
             
             for ch_no=1:length(ch_used)
                 tmp_sb(ch_no,:)=filtfilt(b2(k,:),a2(k,:),tmp(ch_no,:));
                 
-                % for LST
+                % ----- LST -----
                 tmp_sbssvepdata(ch_no,:, :)=filtfilt(b2(k,:),a2(k,:),squeeze(tmp_ssvepdata(ch_no, :, :)));
+                % ----- LST -----
             end
             subj(sn).subband(k).ssvep_template(:,:,m)=tmp_sb;
             
-            % for LST
-           subj(sn).subband(k).SSVEPdata(:, :, :, m) = tmp_sbssvepdata;
+            % ----- LST -----
+            subj(sn).subband(k).SSVEPdata(:, :, :, m) = tmp_sbssvepdata;
+            % ----- LST -----
             
             temp=[temp tmp_sb];
             ref0=ck_signal_nh(sti_f(m),Fs,pha_val(m),source_data_len,num_of_harmonics);

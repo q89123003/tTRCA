@@ -85,10 +85,24 @@ for k=1:num_of_subbands
         ref=[];
         for m=1:40
             tmp=subj(sn).ssvep_template(:,:,m);
+            
+            % ----- LST -----
+            tmp_ssvepdata = subj(sn).SSVEPdata(:, :, :, m);
+            % ----- LST -----
+            
             for ch_no=1:length(ch_used)
                 tmp_sb(ch_no,:)=filtfilt(b2(k,:),a2(k,:),tmp(ch_no,:));
+                
+                % ----- LST -----
+                tmp_sbssvepdata(ch_no,:, :)=filtfilt(b2(k,:),a2(k,:),squeeze(tmp_ssvepdata(ch_no, :, :)));
+                % ----- LST -----
             end
             subj(sn).subband(k).ssvep_template(:,:,m)=tmp_sb;
+            
+            % ----- LST -----
+            subj(sn).subband(k).SSVEPdata(:, :, :, m) = tmp_sbssvepdata;
+            % ----- LST -----
+            
             temp=[temp tmp_sb];
             ref0=ck_signal_nh(sti_f(m),Fs,pha_val(m),source_data_len,num_of_harmonics);
             ref=[ref ref0];
@@ -186,6 +200,54 @@ for sn=1:70
                 end
             end
         end
+        
+        % ----- LST ----- 
+        source_idx=sub_idx;
+        if dataset_no==1
+            source_idx(sn)=[];
+        end
+        
+        LST_templates = cell(length(TW_p), 1);
+        LST_spatial_filters = cell(length(TW_p), 1);
+        
+         
+        for i_tw = 1 : length(TW_p)
+            sig_len=TW_p(i_tw);
+            
+            LST_templates{i_tw} = zeros(num_of_subbands, no_of_class, d3, sig_len);
+            LST_spatial_filters{i_tw} = zeros(num_of_subbands, no_of_class, d3);
+            
+            for i_fb = 1 : num_of_subbands
+                for i_class = 1 : no_of_class
+                    tmp_target_trials = subband_signal(i_fb).SSVEPdata(:, 1:sig_len, idx_traindata, i_class);
+                    tmp_target_mean = squeeze(mean(tmp_target_trials, 3));
+                    Y = tmp_target_mean;
+
+                    transferred_trials = zeros(d3, sig_len, 0);
+                    source_trial_count = 0;
+                    for i_source = 1 : length(source_idx)
+                        tmp_source_trials = squeeze(subj(source_idx(i_source)).subband(i_fb).SSVEPdata(:,1:sig_len,:,i_class));
+                        tmp_source_mean = squeeze(mean(tmp_source_trials, 3));
+
+                        X = [ones(1, size(Y, 2)); tmp_source_mean];
+                        b = Y * X.' / (X * X.');
+
+                        for i_trial = 1 : size(tmp_source_trials, 3)
+                            source_trial_count = source_trial_count + 1;
+                            single_trial_eeg_tmp = squeeze(tmp_source_trials(:, :, i_trial));
+                            X_trial = [ones(1, size(Y, 2)); single_trial_eeg_tmp];
+                            transferred_trials(:, :, source_trial_count) = (b * X_trial);
+                        end
+                    end
+
+                    transferred_trials = cat(3, tmp_target_trials, transferred_trials);
+                    [w_tmp, ~] = trca(transferred_trials);
+                    LST_templates{i_tw}(i_fb, i_class, :, :) = mean(transferred_trials, 3);
+                    LST_spatial_filters{i_tw}(i_fb, i_class, :) = w_tmp(:,1);
+                end
+            end
+        end
+        % ----- LST -----
         
         for run_test=1:length(idx_testdata)
             
@@ -318,8 +380,6 @@ for sn=1:70
                                     source_ssvep_temp=source_ssvep_temp/sum(abs(W_template1));
                                     subband_signal(sub_band).source_subject_filtered_template(my_j,:)=source_ssvep_temp;
                                     
-                                    
-                                    %% LST
                                 end                               
                                
                             end
@@ -389,7 +449,11 @@ for sn=1:70
                                 etrca2R(sub_band,j)=0;
                             end
                             
-                            
+                            % ----- LST -----            
+                            r_tmp = corrcoef(test_signal.'*squeeze(LST_spatial_filters{tw_length}(sub_band, :, :)).', ...
+                               squeeze(LST_templates{tw_length}(sub_band, j, :, :)).'*squeeze(LST_spatial_filters{tw_length}(sub_band, :, :)).');
+                            LST_r(sub_band,j) = sign(r_tmp(1, 2))*r_tmp(1, 2)^2 + sign(r1(1,2))*r1(1,2)^2;
+                            % ----- LST -----
                         end
                     end
                     CCAR1=sum((CCAR).*FB_coef,1);
@@ -423,6 +487,14 @@ for sn=1:70
                     if idx==i
                         n_correct(tw_length,6)=n_correct(tw_length,6)+1;
                     end
+                    
+                    % ----- LST -----
+                    rho = FB_coef0*LST_r;
+                    [~, tau] = max(rho);
+                    if tau == i
+                        n_correct(tw_length,7)=n_correct(tw_length,7)+1;
+                    end
+                    % ----- LST -----
                 end
                 
             end
