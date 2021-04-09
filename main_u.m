@@ -1,5 +1,7 @@
 clear, close all;
 
+seed = 0;
+
 method_legends = {'original', 'LST', 'trans'};
 method_num = 3;
 
@@ -9,8 +11,8 @@ nHarms = 3;
 isEnsemble = true;
 channels = [53 : 59 61 : 63];
 delay = round(0.65 * fs);
-length = 0.8 * fs;
-datasets = 1;
+length = 1.0 * fs;
+datasets = 2;
 %%
 for dataset = datasets
     if dataset == 1
@@ -47,9 +49,11 @@ for dataset = datasets
         end
     end
 %%
-    if dataset == 1
-        target_subjects = 21 : 35;
-        existing_subjects = 1 : 20;
+    suffle_subjects = shuffle(subjects, seed);
+    
+    if dataset == 1    
+        target_subjects = suffle_subjects(1:15);
+        existing_subjects = suffle_subjects(16:end);
 
         max_template_size = 5;
         template_sizes = 1 : max_template_size;
@@ -62,8 +66,8 @@ for dataset = datasets
         end
         
     elseif dataset == 2
-        target_subjects = 51 : 70;
-        existing_subjects = 1 : 50;
+        target_subjects = suffle_subjects(1:30);
+        existing_subjects = suffle_subjects(31:end);
         
         max_template_size = size(subject_eeg{1}, 4) - 1;
         template_sizes = 1 : max_template_size;
