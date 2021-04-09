@@ -232,29 +232,6 @@ end
 
 
 function [W, V] = trca(eeg) % Origial
-% Task-related component analysis (TRCA). This script was written based on
-% the reference paper [1].
-%
-% function W = trca(eeg)
-%
-% Input:
-%   eeg         : Input eeg data 
-%                 (# of channels, Data length [sample], # of trials)
-%
-% Output:
-%   W           : Weight coefficients for electrodes which can be used as 
-%                 a spatial filter.
-%   
-% Reference:
-%   [1] H. Tanaka, T. Katura, H. Sato,
-%       "Task-related component analysis for functional neuroimaging and 
-%        application to near-infrared spectroscopy data",
-%       NeuroImage, vol. 64, pp. 308-327, 2013.
-%
-% Masaki Nakanishi, 22-Dec-2017
-% Swartz Center for Computational Neuroscience, Institute for Neural
-% Computation, University of California San Diego
-% E-mail: masaki@sccn.ucsd.edu
 
 [num_chans, num_smpls, num_trials]  = size(eeg);
 S = zeros(num_chans);
@@ -273,6 +250,23 @@ end % trial_i
 UX = reshape(eeg, num_chans, num_smpls*num_trials);
 
 Q = UX*UX';
+[W,V] = eigs(S, Q);
+
+% function [W, V] = trca_fast(eeg) % Origial
+% 
+% [num_chans, num_smpls, num_trials]  = size(eeg);
+% UX = reshape(eeg, num_chans, num_smpls*num_trials);
+% SX = sum(eeg, 3);
+% S = SX*SX.';
+% Q = UX*UX';
+% [W,V] = eigs(S, Q);
+function [W,V] = trca_fast(eeg)
+% eeg : eeg data (Num of channels * num of sample points * number of trials)
+X1 = eeg(:,:);
+X2 = sum(eeg,3);
+S = X2*X2';
+Q = X1*X1';
+
 [W,V] = eigs(S, Q);
 
 function [ y_ref ] = cca_reference(list_freqs, fs, num_smpls, num_harms)
