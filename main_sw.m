@@ -48,9 +48,11 @@ for dataset = datasets
         end
     end
 %%
+    suffle_subjects = shuffle(subjects, seed);
+    
     if dataset == 1
-        target_subjects = 21 : 35;
-        existing_subjects = 1 : 20;
+        target_subjects = suffle_subjects(1:15);
+        existing_subjects = suffle_subjects(16:end);
 
         max_template_size = 5;
         template_sizes = 1 : max_template_size;
@@ -63,8 +65,8 @@ for dataset = datasets
         end
         
     elseif dataset == 2
-        target_subjects = 51 : 70;
-        existing_subjects = 1 : 50;
+        target_subjects = suffle_subjects(1:30);
+        existing_subjects = suffle_subjects(31:end);
         
         max_template_size = size(subject_eeg{1}, 4) - 1;
         template_sizes = 1 : max_template_size;
