@@ -171,18 +171,8 @@ end
 S = zeros(total_channel_num);
 Q = zeros(total_channel_num);
 
-S_0 = zeros(num_ch0);
-for trial_i = 1:1:num_t0
-    x1 = squeeze(template(:,:,trial_i));
-    S_0 = S_0 + x1 * x1.';
-    for trial_j = trial_i+1:1:num_t0
-        x2 = squeeze(template(:,:,trial_j));
-        S_0 = S_0 + x1*x2' + x2*x1';
-    end % trial_j
-    
-end % trial_i
-
-
+template_sum = sum(template, 3);
+S_0 = template_sum*template_sum.';
 S_0 = S_0 / num_t0 ^ 2;
 
 S(1 : num_ch0, 1 : num_ch0) = S_0;
@@ -198,30 +188,15 @@ for i_c = 1 : size(supplement, 1)
     sup_i = supplement{i_c};
     [num_chi, ~, num_ti] = size(sup_i);
     
-    S_i = zeros(num_chi);
-    for trial_i = 1:1:num_ti
-        x1 = squeeze(sup_i(:,:,trial_i));
-        S_i = S_i + x1 * x1.';
-        for trial_j = trial_i+1:1:num_ti
-            x2 = squeeze(sup_i(:,:,trial_j));
-            S_i = S_i + x1*x2' + x2*x1';
-        end % trial_j
-    end % trial_i
-
+    sup_i_sum = sum(sup_i, 3);
+    S_i = sup_i_sum*sup_i_sum.';
     S_i = S_i / num_ti ^ 2;
 
     S(num_ch_cml + 1 : num_ch_cml + num_chi, ...
         num_ch_cml + 1 : num_ch_cml + num_chi) = S_i;
-        
-    S_0i = zeros(num_ch0, num_chi);
-    for trial_i = 1:1:num_t0
-        for trial_j = 1:1:num_ti
-            x1 = squeeze(template(:,:,trial_i));
-            x2 = squeeze(sup_i(:,:,trial_j));
-            S_0i = S_0i + x1*x2';
-        end % trial_j
-    end % trial_i
     
+    
+    S_0i = template_sum * sup_i_sum.';
     S_0i = S_0i / (num_t0 * num_ti);
     S(1 : num_ch0, num_ch_cml + 1 : num_ch_cml + num_chi) = S_0i;
     S(num_ch_cml + 1 : num_ch_cml + num_chi, 1 : num_ch0) = S_0i.';   
@@ -230,15 +205,11 @@ for i_c = 1 : size(supplement, 1)
 %     num_ch_cmlj = num_ch_cml + num_chi;
 %     for j_c = (i_c + 1) : size(supplement, 1)
 %         sup_j = supplement{j_c};
+%         sup_j_sum = sum(sup_j, 3);
 %         [num_chj, ~, num_tj] = size(sup_j);
-%         S_ij = zeros(num_chi, num_chj);
-%         for trial_i = 1:1:num_ti
-%             for trial_j = 1:1:num_tj
-%                 x1 = squeeze(sup_i(:,:,trial_i));
-%                 x2 = squeeze(sup_j(:,:,trial_j));
-%                 S_ij = S_ij + x1*x2';
-%             end % trial_j
-%         end % trial_i
+% 
+%         S_ij = sup_i_sum*sup_j_sum.';
+%         S_ij = S_ij / (num_ti * num_tj);
 % 
 %         S(num_ch_cml + 1 : num_ch_cml + num_chi, num_ch_cmlj + 1 : num_ch_cmlj + num_chj) = S_ij;
 %         S(num_ch_cmlj + 1 : num_ch_cmlj + num_chj, num_ch_cml + 1 : num_ch_cml + num_chi) = S_ij.';
@@ -256,7 +227,7 @@ for i_c = 1 : size(supplement, 1)
     num_ch_cml = num_ch_cml + num_chi;
 end
 
-[E, eigv] = eigs(S, Q);
+[E, eigv] = eigs(S \ Q);
 W = E(1 : num_ch0, :);
 
 Vs = cell(size(supplement));
@@ -269,81 +240,16 @@ for i_c = 1 : size(supplement, 1)
     num_ch_cml = num_ch_cml + num_chi;
 end
 
-
 function [W, V] = trca(eeg) % Origial
-% Task-related component analysis (TRCA). This script was written based on
-% the reference paper [1].
-%
-% function W = trca(eeg)
-%
-% Input:
-%   eeg         : Input eeg data 
-%                 (# of channels, Data length [sample], # of trials)
-%
-% Output:
-%   W           : Weight coefficients for electrodes which can be used as 
-%                 a spatial filter.
-%   
-% Reference:
-%   [1] H. Tanaka, T. Katura, H. Sato,
-%       "Task-related component analysis for functional neuroimaging and 
-%        application to near-infrared spectroscopy data",
-%       NeuroImage, vol. 64, pp. 308-327, 2013.
-%
-% Masaki Nakanishi, 22-Dec-2017
-% Swartz Center for Computational Neuroscience, Institute for Neural
-% Computation, University of California San Diego
-% E-mail: masaki@sccn.ucsd.edu
 
 [num_chans, num_smpls, num_trials]  = size(eeg);
-S = zeros(num_chans);
-for trial_i = 1:1:num_trials
-    x1 = squeeze(eeg(:,:,trial_i));
-    S = S + x1 * x1.';
-    for trial_j = trial_i+1:1:num_trials
-        x2 = squeeze(eeg(:,:,trial_j));
-        S = S + x1*x2' + x2*x1';
-    end % trial_j
-end % trial_i
-
-% if num_trials == 1
-%     S = eye(num_chans);
-% end
 UX = reshape(eeg, num_chans, num_smpls*num_trials);
-
+SX = sum(eeg, 3);
+S = SX*SX.';
 Q = UX*UX';
-[W,V] = eigs(S, Q);
+[W,V] = eigs(S \ Q);
 
 function [ y_ref ] = cca_reference(list_freqs, fs, num_smpls, num_harms)
-% Generate reference signals for the canonical correlation analysis (CCA)
-% -based steady-state visual evoked potentials (SSVEPs) detection [1, 2].
-%
-% function [ y_ref ] = cca_reference(listFreq, fs,  nSmpls, nHarms)
-% 
-% Input:
-%   listFreq        : List for stimulus frequencies
-%   fs              : Sampling frequency
-%   nSmpls          : # of samples in an epoch
-%   nHarms          : # of harmonics
-%
-% Output:
-%   y_ref           : Generated reference signals
-%                    (# of targets, 2*# of channels, Data length [sample])
-%
-% Reference:
-%   [1] Z. Lin, C. Zhang, W. Wu, and X. Gao,
-%       "Frequency Recognition Based on Canonical Correlation Analysis for 
-%        SSVEP-Based BCI",
-%       IEEE Trans. Biomed. Eng., 54(6), 1172-1176, 2007.
-%   [2] G. Bin, X. Gao, Z. Yan, B. Hong, and S. Gao,
-%       "An online multi-channel SSVEP-based brain-computer interface using
-%        a canonical correlation analysis method",
-%       J. Neural Eng., 6 (2009) 046002 (6pp).
-%
-% Masaki Nakanishi, 28-Jul-2016
-% Swartz Center for Computational Neuroscience, Institute for Neural
-% Computation, University of California San Diego
-% E-mail: masaki@sccn.ucsd.edu
 
 if nargin < 3 
     error('stats:cca_reference:LackOfInput',...
