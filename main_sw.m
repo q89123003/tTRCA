@@ -1,5 +1,7 @@
 clear, close all;
 
+seed = 0;
+
 method_legends = {'original', 'LST', 'trans'};
 method_num = 3;
 LogicalStr = {'false', 'true'};
