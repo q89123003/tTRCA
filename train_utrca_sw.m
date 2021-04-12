@@ -227,7 +227,7 @@ for i_c = 1 : size(supplement, 1)
     num_ch_cml = num_ch_cml + num_chi;
 end
 
-[E, eigv] = eigs(Q \ S);
+[E, eigv] = eigs(S, Q);
 W = E(1 : num_ch0, :);
 
 Vs = cell(size(supplement));
@@ -247,7 +247,12 @@ UX = reshape(eeg, num_chans, num_smpls*num_trials);
 SX = sum(eeg, 3);
 S = SX*SX.';
 Q = UX*UX';
-[W,V] = eigs(Q \ S);
+
+if num_trials > 1
+    [W,V] = eigs(S, Q);
+else
+    [W, V] = eigs(S);
+end
 
 function [ y_ref ] = cca_reference(list_freqs, fs, num_smpls, num_harms)
 
