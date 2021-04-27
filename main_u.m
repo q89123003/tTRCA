@@ -1,6 +1,6 @@
 clear, close all;
 
-seed = 0;
+seed = 1;
 
 method_legends = {'original', 'LST', 'trans'};
 method_num = 3;
@@ -12,7 +12,7 @@ isEnsemble = true;
 channels = [53 : 59 61 : 63];
 delay = round(0.65 * fs);
 length = 0.5 * fs;
-datasets = 1;
+datasets = 2;
 %%
 for dataset = datasets
     if dataset == 1
