@@ -1,6 +1,6 @@
 clear, close all;
 
-seed = 1;
+seed = 2;
 
 method_legends = {'original', 'LST', 'trans'};
 method_num = 3;
