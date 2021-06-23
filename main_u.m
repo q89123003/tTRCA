@@ -1,6 +1,6 @@
-clear, close all;
+%clear, close all;
 
-seed = 2;
+seed = 0;
 
 method_legends = {'original', 'LST', 'trans'};
 method_num = 3;
@@ -11,8 +11,10 @@ nHarms = 3;
 isEnsemble = true;
 channels = [53 : 59 61 : 63];
 delay = round(0.65 * fs);
-length = 0.5 * fs;
+length = 1 * fs;
 datasets = 2;
+
+skip_subject_i = 0;
 %%
 for dataset = datasets
     if dataset == 1
@@ -74,9 +76,16 @@ for dataset = datasets
         permutations = perms(1 : size(subject_eeg{1}, 4));
     end
 
+    %%
     subject_accs = zeros(method_num, method_num, size(target_subjects, 2), size(template_sizes, 2), size(permutations, 1));
-
-    for i_subject = 1 : size(target_subjects, 2)
+    for i_subject = 1 : skip_subject_i
+        subject = target_subjects(i_subject);
+        load(sprintf('./results/dataset%d/Len%d_S%d.mat', dataset, length / fs * 1000, subject));
+        subject_accs(:, :, i_subject, :, :) = subject_acc;
+    end
+    
+    %%
+    for i_subject = skip_subject_i+1 : size(target_subjects, 2)
         subject = target_subjects(i_subject);
 
         sup_subjects = existing_subjects;
@@ -107,11 +116,18 @@ for dataset = datasets
                 model = train_utrca(template, sup_eeg, fs, nFBs, delay);
 
                 for i_sf_m = 1 : method_num
+                    if i_perm == 2 && i_ts == 3 && i_sf_m == 3
+                        disp('here');
+                    end
+                    
                     for i_template_m = 1 : method_num
                         if i_sf_m <= 2 && i_template_m == 3
                             continue;
                         end
 
+                        if i_perm == 2 && i_ts == 3 && i_sf_m == 3 && i_template_m == 3
+                            disp('here');
+                        end
                         % Test phase ---------------------------------------
                         tmp_estimated = test_utrca(test, model, isEnsemble, i_sf_m, i_template_m);
 

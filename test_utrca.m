@@ -69,11 +69,17 @@ for targ_i = 1:1:model.num_targs
                 case 1
                     train = squeeze(model.trains(class_i, fb_i, :, :));
                     train_proj = train.' * w;
+                    r_tmp = corrcoef(normalize(testdata_tmp'*w, 1), normalize(train_proj, 1));
+                    r(fb_i,class_i) = r_tmp(1,2);
                 case 2
                     train = squeeze(model.lst_trains(class_i, fb_i, :, :));
                     train_proj = train.' * w;
+                    r_tmp = corrcoef(normalize(testdata_tmp'*w, 1), normalize(train_proj, 1));
+                    r(fb_i,class_i) = r_tmp(1,2);
                 case 3
                     template = squeeze(model.ttrca_template(class_i, fb_i, :, :, :));
+                    
+% ------------------------- old -----------------------------------------%
                     train_size = size(template, 3);
                     train_proj_sum = train_size * squeeze(mean(template, 3)).' * w;
 
@@ -91,11 +97,34 @@ for targ_i = 1:1:model.num_targs
                         train_proj_sum = train_proj_sum + tmp_sup_size * squeeze(mean(tmp_supplement, 3)).' * tmp_v; 
                     end
 
-                    train_proj = train_proj_sum / train_size;    
+                    train_proj = train_proj_sum / train_size; 
+                    r_tmp = corrcoef(normalize(testdata_tmp'*w, 1), normalize(train_proj, 1));
+                    r(fb_i,class_i) = r_tmp(1,2);
+% ------------------------- old -----------------------------------------%
+
+% ------------------------- new -----------------------------------------%
+%                     template_mean = mean(template, 3);
+%                     r_tmp = cov(testdata_tmp.'*w, template_mean.'*w);
+%                     r_sum = r_tmp(1, 2);
+%                     
+%                     for i_sup = 1 : supplement_num
+%                         tmp_supplement = squeeze(model.ttrca_supplement_cell{i_sup}(class_i, fb_i, :, :, :));
+%                         tmp_supplement_mean = mean(tmp_supplement, 3);
+% 
+%                         if ~is_ensemble
+%                             tmp_v = squeeze(model.ttrca_V_cell{i_sup}(fb_i, class_i, :));
+%                         else
+%                             tmp_v = squeeze(model.ttrca_V_cell{i_sup}(fb_i, :, :)).';
+%                         end
+% 
+%                         r_tmp = cov(testdata_tmp.'*w, tmp_supplement_mean.'*tmp_v);
+%                         r_sum = r_sum + r_tmp(1, 2);
+% %                         r_tmp = cov(tmp_supplement_mean.'*tmp_v, tmp_supplement_mean.'*tmp_v);
+% %                         r_sum = r_sum + r_tmp(1, 2);
+%                     end
+%                     r(fb_i,class_i) = r_sum;
+% ------------------------- new -----------------------------------------%
             end
-            
-            r_tmp = corrcoef(testdata_tmp'*w, train_proj);
-            r(fb_i,class_i) = r_tmp(1,2);
         end % class_i
     end % fb_i
     
