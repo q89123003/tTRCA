@@ -10,19 +10,14 @@ end
 start = tic;
 
 for iter = 1 : iterN
-    
-
     UX = reshape(eeg, num_chans, num_smpls*num_trials);
     SX = sum(eeg, 3);
     S = SX*SX.';
     Q = UX*UX';
-    [W, V] = eigs(S-Q, Q);
-
-
 end
 
 % stop measureing
 elapsed_time = toc(start);
 elapsed_time_avg = elapsed_time / iterN;
 
-
+[W, V] = eigs(S-Q, Q);
