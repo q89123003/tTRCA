@@ -20,7 +20,7 @@ for i_channel_num = 1 : length(channel_nums)
         hold off;
 
         xlabel('log_2(# of trials)');
-        xticklabel(exp(log(2) :  log(2) : log(512)));
+        %xticklabel(exp(log(2) :  log(2) : log(512)));
         ylabel('elapsed time. log(sec)')
     end
 end

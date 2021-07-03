@@ -6,10 +6,11 @@ end
 
 [num_chans, num_smpls, num_trials]  = size(eeg);
 
-elapsed_time_sum = 0;
+% start measuring
+start = tic;
+
 for iter = 1 : iterN
-    % start measuring
-    start = tic;
+
     S = zeros(num_chans);
     for trial_i = 1:1:num_trials
         for trial_j = trial_i+1:1:num_trials
@@ -25,11 +26,10 @@ for iter = 1 : iterN
     UX = reshape(eeg, num_chans, num_smpls*num_trials);
     %UX = bsxfun(@minus, UX, mean(UX,2));
     Q = UX*UX';
-    [W,V] = eigs(S, Q);
-
-    % stop measureing
-    elapsed_time = toc(start);
-    elapsed_time_sum = elapsed_time_sum + elapsed_time;
 end
 
-elapsed_time_avg = elapsed_time_sum / iterN;
+% stop measureing
+elapsed_time = toc(start);
+elapsed_time_avg = elapsed_time / iterN;
+
+[W,V] = eigs(S, Q);
