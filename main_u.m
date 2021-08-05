@@ -11,7 +11,7 @@ nHarms = 3;
 isEnsemble = true;
 channels = [53 : 59 61 : 63];
 delay = round(0.65 * fs);
-length = 1 * fs;
+length = 0.5 * fs;
 datasets = 2;
 
 skip_subject_i = 0;

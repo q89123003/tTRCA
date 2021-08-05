@@ -1,6 +1,6 @@
 clear, close all;
 fs = 500;
-trial_num_sweep = round(exp(log(2) :  log(2) : log(512)));
+trial_num_sweep = round(exp(log(2) :  log(2) : log(1024)));
 channel_nums = [4 16 64 256];
 wave_iter_num = 5;
 iterN = 10;
@@ -18,6 +18,7 @@ for i_duration = 1 : length(durations)
 
         wave_nums = randi(wave_num_range, 1, wave_iter_num);
         elapsed_times = zeros(2, length(trial_num_sweep), wave_iter_num);
+        component_diffs = zeros(length(trial_num_sweep), wave_iter_num);
         
         for i_trial_num = 1 : length(trial_num_sweep)
             trial_num = trial_num_sweep(i_trial_num);
@@ -50,11 +51,13 @@ for i_duration = 1 : length(durations)
 
                 [w, v, elapsed_time_avg] = original_trca(x, iterN);
                 elapsed_times(1, i_trial_num, iter) = elapsed_time_avg;
+                
+                component_diffs(i_trial_num, iter) = norm(w_fast(:, 1) - w(:, 1));
             end
         end
 
         save(sprintf('./elapsed time results/elapsed_times_dur%d_chn%d.mat', duration, channel_num), 'elapsed_times');
-
+        save(sprintf('./elapsed time results/component_diff_dur%d_chn%d.mat', duration, channel_num), 'component_diffs');
     end
 end
 %%
