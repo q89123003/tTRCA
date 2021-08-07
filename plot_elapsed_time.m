@@ -1,11 +1,11 @@
 alg_names = {'original', 'fast'};
 
-trial_num_sweep = round(exp(log(2) :  log(2) : log(512)));
+trial_num_sweep = round(exp(log(2) :  log(2) : log(1024)));
 channel_nums = [4 16 64 256];
 wave_iter_num = 5;
 iterN = 10;
 fs = 500;
-durations = [2 4 8 16];
+durations = [2 4 8];
 
 % colors = cell(1, 2);
 % colors{1} = zeros(length(channel_nums), 3);
