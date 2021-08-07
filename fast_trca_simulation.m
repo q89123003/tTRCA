@@ -1,10 +1,10 @@
 clear, close all;
 fs = 500;
 trial_num_sweep = round(exp(log(2) :  log(2) : log(1024)));
-channel_nums = [4 16 64 256];
+channel_nums = [4 16];
 wave_iter_num = 5;
 iterN = 10;
-durations = [2 4 8 16];
+durations = [2];
 wave_num_range = [3 10];
 freq_range = [0 60];
 
