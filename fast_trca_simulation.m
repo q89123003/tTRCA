@@ -20,7 +20,7 @@ for i_duration = 1 : length(durations)
         elapsed_times = zeros(2, length(trial_num_sweep), wave_iter_num);
         component_diffs = zeros(length(trial_num_sweep), wave_iter_num);
         
-        for i_trial_num = 1 : length(trial_num_sweep)
+        for i_trial_num = length(trial_num_sweep) : -1 : 1
             trial_num = trial_num_sweep(i_trial_num);
             for iter = 1 : wave_iter_num
                 wave_num = wave_nums(iter);
