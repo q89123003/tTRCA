@@ -1,9 +1,7 @@
-alg_names = {'original', 'fast'};
+alg_names = {'original', 'proposed'};
 
 trial_num_sweep = round(exp(log(2) :  log(2) : log(1024)));
 channel_nums = [4 16 64];
-wave_iter_num = 5;
-iterN = 10;
 fs = 500;
 durations = [2 4 8 16];
 
@@ -21,17 +19,20 @@ line_styles = {'-', '--'}; %, '-.', ':'};
 ytclabels = {};
 ytcs = 10.^(-2:1:7);
 for i = 1 : length(ytcs)
-    ytclabels = [ytclabels ['1e' num2str(log10(ytcs(i)))]];
+    ytclabels = [ytclabels ['10^{' num2str(log10(ytcs(i))) '}']];
 end
 
 f = figure();
 f.Position = [100 100 1600 500];
 tiledlayout(1, length(durations));
+avg_slopes = zeros(2, length(durations), length(channel_nums));
+
 for i_duration = 1 : length(durations)
     duration = durations(i_duration);
     nexttile;
     legends = {};
     ps = [];
+    
     for i_channel_num = 1 : length(channel_nums)
         channel_num = channel_nums(i_channel_num);
         %subplot(length(channel_nums), length(durations), (i_channel_num - 1) * length(durations) + i_duration);
@@ -56,18 +57,22 @@ for i_duration = 1 : length(durations)
             end
             slope_mean = slope_sum / (length(tmp_mean_time) - 1);
             
-            text(10+0.3, log10(tmp_mean_time(end))+3, sprintf('%.2f', slope_mean));
+            avg_slopes(i_alg, i_duration, i_channel_num) = slope_mean;
+            %text(10+0.3, log10(tmp_mean_time(end))+3, sprintf('%.2f', slope_mean));
         end
         hold off;
     end
     
-    title(sprintf('%d time stamps', duration * fs));
+    title(sprintf('N_s = %d sec', duration));
     
-    xlabel('number of trials');
-    xlim([1, 11.5]);
+    xlabel('number of trials (N_t)');
+    xlim([0, 11]);
     xticks(log2(trial_num_sweep));
     xticklabels(strsplit(num2str(trial_num_sweep)));
-    ylabel('elapsed time (ms)')
+    
+    if i_duration == 1
+        ylabel('elapsed time (ms)')
+    end
     yticks(-2:1:7);
 %     yticklabels(strsplit(num2str(10.^(-2:1:7))));
     yticklabels(ytclabels);
@@ -75,6 +80,7 @@ for i_duration = 1 : length(durations)
     set(gca, 'FontSize', 15);
 end
 
+mean_avg_slopes = mean(avg_slopes, 3);
 
 sorted_ps(1:3) = ps(1:2:5);
 sorted_ps(4:6) = ps(2:2:6);
