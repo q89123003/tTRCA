@@ -57,7 +57,14 @@ parfor i_condition = 1 : n_condition
 %                 elapsed_times(2, i_trial_num) = elapsed_time_avg;
             elapsed_time_fast(i_trial_num) = elapsed_time_avg;
 
-            [w, v, elapsed_time_avg] = original_trca(x, iterN);
+            if trial_num <= 8
+                origIterN = 10000;
+            elseif trial_num <= 64
+                origIterN = 100;
+            else
+                origIterN = 10;
+            end
+            [w, v, elapsed_time_avg] = original_trca(x, origIterN);
             elapsed_time_orig(i_trial_num) = elapsed_time_avg;
 
             component_diffs(i_trial_num) = norm(w_fast(:, 1) - w(:, 1));
@@ -76,7 +83,7 @@ for i_duration = 1 : length(durations)
     duration = durations(i_duration);
     for i_channel_num = 1 : length(channel_nums)
         channel_num = channel_nums(i_channel_num);
-        i_condition = (i_duration - 1) * length(channel_num) + 1 + i_channel_num;
+        i_condition = (i_duration - 1) * length(channel_nums) + i_channel_num;
         elapsed_times = squeeze(elapsed_times_all(i_condition, :, :));
         component_diffs = squeeze(component_diffs_all(i_condition, :));
         
